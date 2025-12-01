@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException, Query
 from typing import List, Optional
 
-from app.models import Protein, ProteinSearch
+from fastapi import APIRouter, HTTPException, Query
+
+from app.models import Protein, ProteinSearch, ProteinStatus
 from app.services.mongodb_service import mongodb_service
 
 router = APIRouter(prefix="/proteins", tags=["proteins"])
@@ -21,6 +22,13 @@ async def search_proteins(
 ):
     """Search proteins with various filters"""
     try:
+        status_enum = None
+        if status:
+            try:
+                status_enum = ProteinStatus(status.lower())
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid status: {status}")
+
         search_params = ProteinSearch(
             query=query,
             protein_id=protein_id,
@@ -28,7 +36,7 @@ async def search_proteins(
             ec_numbers=[ec_number] if ec_number else [],
             go_terms=[go_term] if go_term else [],
             taxonomy_id=taxonomy_id,
-            status=status,
+            status=status_enum,
             limit=limit,
             offset=offset,
         )

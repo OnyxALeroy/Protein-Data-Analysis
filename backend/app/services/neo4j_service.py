@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 from dotenv import load_dotenv
 from neo4j import AsyncGraphDatabase
 
-from app.models import GraphData, GraphEdge, GraphNode, GraphStats
+from app.models import GraphData, GraphEdge, GraphNode, GraphStats, ProteinStatus
 
 load_dotenv()
 logger = logging.getLogger(__name__)
@@ -202,10 +202,15 @@ class Neo4jService:
             nodes = []
             for node in record["nodes"]:
                 node_data = dict(node)
+
+                status = node_data.get("status")
+                if status not in ["reviewed", "unreviewed"]:
+                    status = ProteinStatus("unreviewed")
+
                 graph_node = GraphNode(
                     protein_id=node_data["protein_id"],
                     name=node_data.get("name"),
-                    status=node_data.get("status"),
+                    status=status,
                     ec_numbers=node_data.get("ec_numbers", []),
                     go_terms=node_data.get("go_terms", []),
                     domain_count=node_data.get("domain_count", 0),

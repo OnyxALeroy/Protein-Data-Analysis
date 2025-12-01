@@ -1,8 +1,7 @@
 import logging
+import random
 from collections import Counter, defaultdict
 from typing import Any, Dict, List
-
-import numpy as np
 
 from app.models import LabelPropagationRequest, LabelPropagationResult
 from app.services.mongodb_service import mongodb_service
@@ -215,15 +214,12 @@ class LabelPropagationService:
         )
 
         initially_annotated = [p for p in proteins_data if p["labels"]]
-        total_proteins = len(proteins_data)
 
         if not initially_annotated:
             return {"error": "No initially annotated proteins found for evaluation"}
 
         holdout_size = max(1, len(initially_annotated) // 5)
-        holdout_proteins = np.random.choice(
-            initially_annotated, holdout_size, replace=False
-        )
+        holdout_proteins = random.sample(initially_annotated, holdout_size)
 
         modified_data = proteins_data.copy()
         for protein in holdout_proteins:

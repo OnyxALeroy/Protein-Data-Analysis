@@ -44,8 +44,8 @@ class Protein(BaseModel):
     go_terms: List[str] = Field(default_factory=list)
     domains: List[Domain] = Field(default_factory=list)
     annotations: List[Annotation] = Field(default_factory=list)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
 
     class Config:
         json_encoders = {datetime: lambda v: v.isoformat()}

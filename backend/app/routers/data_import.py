@@ -16,6 +16,9 @@ async def import_proteins(
     batch_size: int = Form(100),
 ):
     """Import protein data from uploaded file"""
+    if file.filename is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
     try:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=Path(file.filename).suffix
@@ -39,6 +42,9 @@ async def import_proteins(
 @router.post("/domains")
 async def import_domains(file: UploadFile = File(...)):
     """Import domain annotations from protein2ipr format"""
+    if file.filename is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
     try:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=Path(file.filename).suffix
@@ -60,6 +66,9 @@ async def import_domains(file: UploadFile = File(...)):
 @router.post("/go-annotations")
 async def import_go_annotations(file: UploadFile = File(...)):
     """Import GO annotations from GAF format"""
+    if file.filename is None:
+        raise HTTPException(status_code=400, detail="No file uploaded")
+
     try:
         with tempfile.NamedTemporaryFile(
             delete=False, suffix=Path(file.filename).suffix

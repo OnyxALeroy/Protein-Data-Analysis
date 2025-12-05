@@ -115,14 +115,12 @@ class LabelPropagationService:
 
                 if neighbor_labels:
                     most_common_labels = [
-                        [
-                            label
-                            for label, count in sorted(
-                                neighbor_labels.items(),
-                                key=lambda x: x[1],
-                                reverse=True,
-                            )
-                        ]
+                        label
+                        for label, count in sorted(
+                            neighbor_labels.items(),
+                            key=lambda x: x[1],
+                            reverse=True,
+                        )
                     ]
                     new_label_set = set(most_common_labels)
                 else:

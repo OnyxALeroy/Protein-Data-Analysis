@@ -30,20 +30,10 @@ class Neo4jService:
         if self.driver is None:
             raise Exception("Neo4j driver not initialized")
 
-        constraints = [
-            "CREATE CONSTRAINT protein_id_unique IF NOT EXISTS FOR (p:Protein) REQUIRE p.protein_id IS UNIQUE",
-            "CREATE INDEX protein_name_index IF NOT EXISTS FOR (p:Protein) ON (p.name)",
-            "CREATE INDEX protein_status_index IF NOT EXISTS FOR (p:Protein) ON (p.status)",
-            "CREATE INDEX protein_ec_index IF NOT EXISTS FOR (p:Protein) ON (p.ec_numbers)",
-            "CREATE INDEX protein_go_index IF NOT EXISTS FOR (p:Protein) ON (p.go_terms)",
-        ]
-
-        async with self.driver.session() as session:
-            for constraint in constraints:
-                try:
-                    await session.run(constraint)
-                except Exception as e:
-                    logger.warning(f"Constraint creation failed: {e}")
+        logger.info(
+            "Skipping constraint creation due to Neo4j driver type restrictions"
+        )
+        # Constraints will need to be created manually or via a different method
 
     async def disconnect(self):
         """Close Neo4j connection"""
@@ -231,29 +221,38 @@ class Neo4jService:
 
             return GraphData(nodes=nodes, edges=edges)
 
-    async def search_proteins(self, query: str, limit: int = 50) -> List[GraphNode]:
+    async def search_proteins(
+        self, search_query: str, limit: int = 50
+    ) -> List[GraphNode]:
         """Search proteins by name or ID"""
         if self.driver is None:
             raise Exception("Neo4j driver not initialized")
 
-        cypher_query = """
-        MATCH (p:Protein)
-        WHERE toLower(p.protein_id) CONTAINS toLower($query)
-           OR toLower(p.name) CONTAINS toLower($query)
-        RETURN p
-        LIMIT $limit
-        """
-
         async with self.driver.session() as session:
-            result = await session.run(cypher_query, query=query, limit=limit)
+            result = await session.run(
+                """
+                MATCH (p:Protein)
+                WHERE toLower(p.protein_id) CONTAINS toLower($search_query)
+                   OR toLower(p.name) CONTAINS toLower($search_query)
+                RETURN p
+                LIMIT $limit
+                """,
+                search_query=search_query,
+                limit=limit,
+            )
             nodes = []
 
             async for record in result:
                 node_data = dict(record["p"])
+                status_str = node_data.get("status", "unreviewed")
+                if status_str not in ["reviewed", "unreviewed"]:
+                    status_str = "unreviewed"
+                status = ProteinStatus(status_str)
+
                 graph_node = GraphNode(
                     protein_id=node_data["protein_id"],
                     name=node_data.get("name"),
-                    status=node_data.get("status"),
+                    status=status,
                     ec_numbers=node_data.get("ec_numbers", []),
                     go_terms=node_data.get("go_terms", []),
                     domain_count=node_data.get("domain_count", 0),
@@ -271,29 +270,36 @@ class Neo4jService:
             total_proteins_result = await session.run(
                 "MATCH (p:Protein) RETURN count(p) as count"
             )
-            total_proteins = (await total_proteins.single())["count"]
+            total_proteins_record = await total_proteins_result.single()
+            total_proteins = (
+                total_proteins_record["count"] if total_proteins_record else 0
+            )
 
             reviewed_result = await session.run(
                 "MATCH (p:Protein {status: 'reviewed'}) RETURN count(p) as count"
             )
-            reviewed_proteins = (await reviewed_result.single())["count"]
+            reviewed_record = await reviewed_result.single()
+            reviewed_proteins = reviewed_record["count"] if reviewed_record else 0
 
             unreviewed_result = await session.run(
                 "MATCH (p:Protein {status: 'unreviewed'}) RETURN count(p) as count"
             )
-            unreviewed_proteins = (await unreviewed_result.single())["count"]
+            unreviewed_record = await unreviewed_result.single()
+            unreviewed_proteins = unreviewed_record["count"] if unreviewed_record else 0
 
             isolated_result = await session.run("""
                 MATCH (p:Protein)
                 WHERE NOT (p)-[:SIMILAR_TO]-()
                 RETURN count(p) as count
             """)
-            isolated_proteins = (await isolated_result.single())["count"]
+            isolated_record = await isolated_result.single()
+            isolated_proteins = isolated_record["count"] if isolated_record else 0
 
             edges_result = await session.run(
                 "MATCH ()-[r:SIMILAR_TO]-() RETURN count(r) as count"
             )
-            total_edges = (await edges_result.single())["count"]
+            edges_record = await edges_result.single()
+            total_edges = edges_record["count"] if edges_record else 0
 
             avg_degree = 0
             if total_proteins > 0:

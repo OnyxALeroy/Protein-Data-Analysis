@@ -208,10 +208,14 @@ class Neo4jService:
 
             edges = []
             for rel in record["relationships"]:
+                # Neo4j relationship object - access start and end nodes
+                source_id = rel.start_node.get("protein_id", "")
+                target_id = rel.end_node.get("protein_id", "")
                 edge_data = dict(rel)
+
                 graph_edge = GraphEdge(
-                    source_protein_id=edge_data["source_protein_id"],
-                    target_protein_id=edge_data["target_protein_id"],
+                    source_protein_id=source_id,
+                    target_protein_id=target_id,
                     weight=edge_data.get("weight", 0),
                     shared_domains=edge_data.get("shared_domains", []),
                     jaccard_similarity=edge_data.get("jaccard_similarity", 0),

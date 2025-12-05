@@ -171,19 +171,18 @@ class Neo4jService:
         if self.driver is None:
             raise Exception("Neo4j driver not initialized")
 
-        query = """
-        MATCH (p:Protein {{protein_id: $protein_id}})
-        CALL apoc.path.subgraphAll(p, {{
-            relationshipFilter: "SIMILAR_TO",
-            maxLevel: $depth,
-            bfs: true
-        }})
-        YIELD nodes, relationships
-        RETURN nodes, relationships
+        # Build query with depth as literal since Neo4j doesn't support parameters in relationship patterns
+        query = f"""
+        MATCH path = (p:Protein {{protein_id: $protein_id}})-[:SIMILAR_TO*1..{depth}]-(connected)
+        WITH collect(DISTINCT p) + collect(DISTINCT connected) as nodes,
+             collect(DISTINCT relationships(path)) as rels
+        UNWIND rels as rel_list
+        UNWIND rel_list as rel
+        RETURN nodes, collect(DISTINCT rel) as relationships
         """
 
         async with self.driver.session() as session:
-            result = await session.run(query, protein_id=protein_id, depth=depth)
+            result = await session.run(query, protein_id=protein_id)
             record = await result.single()
 
             if not record:

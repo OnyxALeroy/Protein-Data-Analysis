@@ -46,15 +46,15 @@ class DataImportService:
         else:
             raise ValueError(f"Unsupported file format: {file_path.suffix}")
 
-        required_columns = ["protein_id", "name"]
+        required_columns = ["Entry", "Protein names"]
         missing_columns = [col for col in required_columns if col not in df.columns]
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
         for _, row in df.iterrows():
             protein = Protein(
-                protein_id=str(row["protein_id"]),
-                name=str(row.get("name", "")),
+                protein_id=str(row["Entry"]),
+                name=str(row.get("Protein names", "")),
                 description=str(row.get("description", "")),
                 sequence=str(row.get("sequence", "")),
                 length=int(row.get("length", 0))
@@ -69,7 +69,7 @@ class DataImportService:
                 status=ProteinStatus.REVIEWED
                 if str(row.get("status", "")).lower() == "reviewed"
                 else ProteinStatus.UNREVIEWED,
-                ec_numbers=self._parse_list_field(row.get("ec_numbers", "")),
+                ec_numbers=self._parse_list_field(row.get("EC number", "")),
                 go_terms=self._parse_list_field(row.get("go_terms", "")),
             )
 

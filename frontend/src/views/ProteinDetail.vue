@@ -20,7 +20,8 @@
       </li>
     </ul>
 
-    <button @click="getSimilar">Find similar proteins</button>
+    <button @click="getSimilar" :disabled="loading">Find similar proteins</button>
+    <div v-if="loading">Loading similar proteins…</div>
     <ul v-if="similar.length">
       <li v-for="s in similar" :key="s.protein_id">
         <router-link :to="`/proteins/${s.protein_id}`"
@@ -42,6 +43,7 @@ const route = useRoute();
 const protein = ref(null);
 const domains = ref([]);
 const similar = ref([]);
+const loading = ref(false);
 
 async function load() {
   const id = route.params.proteinId;
@@ -50,7 +52,14 @@ async function load() {
 }
 
 async function getSimilar() {
-  similar.value = await api.getProteinSimilar(route.params.proteinId);
+  loading.value = true;
+  try {
+    similar.value = await api.getProteinSimilar(route.params.proteinId);
+  } catch (e) {
+    alert("Failed to load similar proteins: " + e.message);
+  } finally {
+    loading.value = false;
+  }
 }
 
 onMounted(load);

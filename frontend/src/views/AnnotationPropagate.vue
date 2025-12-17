@@ -12,8 +12,9 @@
       <label
         >Threshold: <input v-model.number="threshold" step="0.001"
       /></label>
-      <button type="submit">Run</button>
+      <button type="submit" :disabled="running">Run</button>
     </form>
+    <div v-if="running">Running propagation…</div>
     <div v-if="result">{{ result }}</div>
   </section>
 </template>
@@ -25,8 +26,10 @@ const attribute = ref("ec");
 const max_iterations = ref(100);
 const threshold = ref(0.01);
 const result = ref(null);
+const running = ref(false);
 
 async function submit() {
+  running.value = true;
   try {
     result.value = await api.propagate({
       attribute: attribute.value,
@@ -35,6 +38,8 @@ async function submit() {
     });
   } catch (e) {
     alert(e.message);
+  } finally {
+    running.value = false;
   }
 }
 </script>

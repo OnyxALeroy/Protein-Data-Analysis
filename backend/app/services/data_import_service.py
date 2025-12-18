@@ -51,39 +51,34 @@ class DataImportService:
         if missing_columns:
             raise ValueError(f"Missing required columns: {missing_columns}")
 
+        proteins = []
         for _, row in df.iterrows():
+            # Extract sequence and calculate length
+            sequence = str(row.get("Sequence", ""))
+            length = len(sequence) if sequence else None
+
+            # Extract taxonomy from Organism field
+            organism = str(row.get("Organism", ""))
+            taxonomy_name = organism if organism else None
+
             protein = Protein(
                 protein_id=str(row["Entry"]),
                 name=str(row.get("Protein names", "")),
-                description=str(row.get("description", "")),
-                sequence=str(row.get("sequence", "")),
-                length=int(row.get("length", 0))
-                if pd.notna(row.get("length"))
-                else None,
-                taxonomy_id=str(row.get("taxonomy_id", ""))
-                if pd.notna(row.get("taxonomy_id"))
-                else None,
-                taxonomy_name=str(row.get("taxonomy_name", ""))
-                if pd.notna(row.get("taxonomy_name"))
-                else None,
-                status=ProteinStatus.REVIEWED
-                if str(row.get("status", "")).lower() == "reviewed"
-                else ProteinStatus.UNREVIEWED,
+                description=str(row.get("Protein names", "")),
+                sequence=sequence,
+                length=length,
+                taxonomy_id=None,
+                taxonomy_name=taxonomy_name,
+                status=ProteinStatus.REVIEWED,
                 ec_numbers=self._parse_list_field(row.get("EC number", "")),
-                go_terms=self._parse_list_field(row.get("go_terms", "")),
+                go_terms=[],  # Will be populated from InterPro parsing
             )
 
-            # Check for domains column or InterPro column
-            domains_column = None
-            if "domains" in df.columns:
-                domains_column = "domains"
-            elif "InterPro" in df.columns:
-                domains_column = "InterPro"
-
-            if domains_column and pd.notna(row[domains_column]):
-                domain_ids = self._parse_list_field(row[domains_column])
+            # Parse InterPro column for domains
+            if "InterPro" in df.columns and pd.notna(row["InterPro"]):
+                interpro_ids = self._parse_list_field(row["InterPro"])
                 protein.domains = [
-                    Domain(domain_id=domain_id) for domain_id in domain_ids
+                    Domain(domain_id=domain_id) for domain_id in interpro_ids
                 ]
 
             proteins.append(protein)

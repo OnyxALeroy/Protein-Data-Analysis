@@ -15,8 +15,8 @@
 
     <h3>Domains</h3>
     <ul>
-      <li v-for="d in domains" :key="d.domain_id">
-        {{ d.domain_id }} — {{ d.domain_name }}
+      <li v-for="d in domains" :key="d">
+        {{ d }}
       </li>
     </ul>
 

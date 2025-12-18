@@ -31,8 +31,12 @@ class LabelPropagationService:
         protein_graph = self._build_graph(proteins_data)
         initial_labels = self._extract_initial_labels(proteins_data, request.attribute)
 
+        proteins_with_neighbors = len(
+            [p for p, neighbors in protein_graph.items() if neighbors]
+        )
         logger.info(
-            f"Found {len([p for p in proteins_data if p['labels']])} proteins with initial labels"
+            f"Found {len([p for p in proteins_data if p['labels']])} proteins with initial labels, "
+            f"{proteins_with_neighbors} proteins have neighbors"
         )
 
         final_labels, iterations, converged = self._label_propagation(
@@ -40,7 +44,7 @@ class LabelPropagationService:
         )
 
         confidence_scores = self._calculate_confidence_scores(
-            final_labels, initial_labels
+            final_labels, initial_labels, protein_graph
         )
 
         await self._update_protein_labels(final_labels, request.attribute)
@@ -154,7 +158,10 @@ class LabelPropagationService:
         )
 
     def _calculate_confidence_scores(
-        self, final_labels: Dict[str, List[str]], initial_labels: Dict[str, List[str]]
+        self,
+        final_labels: Dict[str, List[str]],
+        initial_labels: Dict[str, List[str]],
+        graph: Dict[str, List[str]],
     ) -> Dict[str, float]:
         """Calculate confidence scores for predicted labels"""
         confidence_scores = {}
@@ -167,7 +174,27 @@ class LabelPropagationService:
             if initial_labels.get(protein_id):
                 confidence_scores[protein_id] = 1.0
             else:
-                confidence_scores[protein_id] = 0.5
+                neighbors = graph.get(protein_id, [])
+
+                if not neighbors:
+                    confidence_scores[protein_id] = 0.0
+                else:
+                    labeled_neighbors = 0
+                    matching_neighbors = 0
+
+                    for neighbor in neighbors:
+                        neighbor_labels = final_labels.get(neighbor, [])
+                        if neighbor_labels:
+                            labeled_neighbors += 1
+                            if set(labels) & set(neighbor_labels):
+                                matching_neighbors += 1
+
+                    if labeled_neighbors > 0:
+                        confidence_scores[protein_id] = (
+                            matching_neighbors / labeled_neighbors
+                        )
+                    else:
+                        confidence_scores[protein_id] = 0.0
 
         return confidence_scores
 

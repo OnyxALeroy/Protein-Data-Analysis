@@ -73,8 +73,15 @@ class DataImportService:
                 go_terms=self._parse_list_field(row.get("go_terms", "")),
             )
 
-            if "domains" in df.columns and pd.notna(row["domains"]):
-                domain_ids = self._parse_list_field(row["domains"])
+            # Check for domains column or InterPro column
+            domains_column = None
+            if "domains" in df.columns:
+                domains_column = "domains"
+            elif "InterPro" in df.columns:
+                domains_column = "InterPro"
+
+            if domains_column and pd.notna(row[domains_column]):
+                domain_ids = self._parse_list_field(row[domains_column])
                 protein.domains = [
                     Domain(domain_id=domain_id) for domain_id in domain_ids
                 ]
